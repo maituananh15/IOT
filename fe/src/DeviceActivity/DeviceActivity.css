@@ -1,0 +1,66 @@
+.container-body {
+    display: flex;
+    padding: 10px 20px;
+    gap: 300px;
+    margin-left: 25%;
+}
+.sort {
+    width: 200px;
+    height: 50px;
+    background-color: #ccc;
+    border-radius: 15px;
+    transition: all 0.3s ease;
+}
+
+.sort a {
+    color: #000;
+    text-decoration: none;
+    font-weight: bold;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0;
+    display: flex;
+    border-radius: 15px;
+}
+
+
+.sort:hover {
+    background-color: #007bff;
+}
+
+
+.sort ul {
+    list-style: none;
+    margin: 0;;
+    padding: 5px 0;
+    border-radius: 10px;
+    width: 200px;
+}
+
+
+.sort ul .dropdown-item:hover {
+    background-color: #007bff;
+    border-radius: 5px;
+}
+.search input {
+    width: 300px;
+    height: 50px;
+    border-radius: 15px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    transition: all 0.3s ease;
+}
+.search button {
+    width: 100px;
+    height: 50px;
+    border-radius: 15px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.container-table {
+    width: 80%;
+    margin-left: 10%;
+}
