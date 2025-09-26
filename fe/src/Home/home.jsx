@@ -75,7 +75,7 @@ function Home() {
   // 👉 Gửi lệnh bật/tắt thiết bị
   const toggleDevice = async (device, state) => {
     try {
-      await fetch("http://localhost:5000/api/deviceactions", {
+      await fetch("http://localhost:5000/api/device_actions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -104,7 +104,7 @@ function Home() {
                   latestData.temperature < 15
                     ? "rgb(51,134,236)" // xanh dương
                     : latestData.temperature < 30
-                      ? "rgb(156,201,73)" // xanh lá
+                      ? "rgb(215, 145, 31)" // xanh lá
                       : "rgb(237,53,53)", // đỏ
               }}
             >
