@@ -7,7 +7,7 @@ const deviceActionRoutes = require('./src/routers/deviceActionRouter');
 const DataSensor = require("./src/models/dataSensorModel");
 const DeviceAction = require("./src/models/deviceActionModel");
 const mqtt = require('mqtt');
-const mqttClient = require('./src/config/db/mqttClient'); // import client MQTT từ mqttClient.js
+const mqttClient = require('./src/config/db/mqttClient'); 
 
 
 // ================== APP ==================
@@ -24,7 +24,7 @@ app.use(express.json());
 // Kết nối MongoDB
 db.connect();
 
-// Routes
+// API 
 app.use('/api/users', userRoutes);
 app.use('/api/sensors', dataSensorRoutes);
 app.use('/api/device_actions', deviceActionRoutes);

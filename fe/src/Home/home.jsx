@@ -154,11 +154,11 @@ function Home() {
 
 
           {/* Biểu đồ + điều khiển */}
-          <div className="content-main container mt-3">
+          <div className="content-main container mt-2">
             <div className="row">
               {/* Biểu đồ */}
               <div className="col-9">
-                <ResponsiveContainer width="100%" height={550}>
+                <ResponsiveContainer width="100%" height={470}>
                   <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                     <Line type="monotone" dataKey="temperature" stroke="#ff7300" name="Temperature (°C)" />
                     <Line type="monotone" dataKey="humidity" stroke="#387908" name="Humidity (%)" />
@@ -175,7 +175,7 @@ function Home() {
               {/* Điều khiển */}
               <div className="col-3">
                 {/* Quạt */}
-                <div className="control-fan mb-3">
+                <div className="control-fan mb-1">
                   <FaFan className={`icon ${fanOn ? "spin" : ""}`} />
                   <span> Quạt </span>
                   <label className="switch">

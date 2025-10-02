@@ -1,4 +1,3 @@
-const deviceActionService = require('../service/deviceActionService');
 const DeviceAction = require('../models/deviceActionModel');
 const mqttClient = require('../config/db/mqttClient');
 
@@ -6,7 +5,6 @@ class DeviceActionController {
     // ✅ Lấy toàn bộ dữ liệu (lọc theo thời gian, phân trang, sort)
     async getAll(req, res) {
         try {
-            // Lấy tham số từ query
             const {
                 page = 1,
                 limit = 10,
@@ -16,25 +14,15 @@ class DeviceActionController {
                 filterDevice = "",
                 filterAction = "",
             } = req.query;
-            // Xây dựng filter
+
             let filter = {};
 
-            // Lọc theo thiết bị
-            if (filterDevice) {
-                filter.deviceName = filterDevice;
-            }
+            if (filterDevice) filter.deviceName = filterDevice;
+            if (filterAction) filter.actions = filterAction;
 
-            // Lọc theo hành động
-            if (filterAction) {
-                filter.actions = filterAction;
-            }
-
-            // Search theo thời gian
             if (search) {
-                // HH:mm:ss
                 if (/^\d{2}:\d{2}:\d{2}$/.test(search)) {
                     let [hours, minutes, seconds] = search.split(":").map(Number);
-                    // Nếu DB lưu UTC thì phải -7
                     const utcHours = (hours - 7 + 24) % 24;
                     filter.$expr = {
                         $and: [
@@ -43,47 +31,36 @@ class DeviceActionController {
                             { $eq: [{ $second: "$date" }, seconds] },   
                         ],
                     };
-                }
-                // HH:mm
-                if (/^\d{2}:\d{2}$/.test(search)) {
+                } else if (/^\d{2}:\d{2}$/.test(search)) {
                     let [hours, minutes] = search.split(":").map(Number);
-
-                    // Nếu DB lưu UTC thì phải -7
                     const utcHours = (hours - 7 + 24) % 24;
-
                     filter.$expr = {
                         $and: [
                             { $eq: [{ $hour: "$date" }, utcHours] },
                             { $eq: [{ $minute: "$date" }, minutes] },
                         ],
                     };
-                }
-                // YYYY-MM-DD
-                else if (/^\d{4}-\d{2}-\d{2}$/.test(search)) {
+                } else if (/^\d{4}-\d{2}-\d{2}$/.test(search)) {
                     const start = new Date(`${search}T00:00:00Z`);
                     const end = new Date(`${search}T23:59:59Z`);
-
                     filter.date = { $gte: start, $lte: end };
-                }
-                // YYYY-MM-DD HH:mm:ss
-                else if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(search)) {
+                } else if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(search)) {
                     const date = new Date(search);
                     filter.date = {
                         $gte: date,
-                        $lt: new Date(date.getTime() + 1000), // trong 1s
+                        $lt: new Date(date.getTime() + 1000),
                     };
                 }
             }
-            
-            // Phân trang & sort
+
             const skip = (page - 1) * limit;
             const sortObj = { [sortField]: sortOrder === "asc" ? 1 : -1 };
-            // Lấy dữ liệu
+
             const [data, total] = await Promise.all([
                 DeviceAction.find(filter).sort(sortObj).skip(skip).limit(Number(limit)),
                 DeviceAction.countDocuments(filter),
             ]);
-            // Trả về kết quả
+
             res.status(200).json({
                 data,
                 total,
@@ -96,8 +73,7 @@ class DeviceActionController {
         }
     }
 
-
-    // ✅ Tạo action mới
+    // ✅ Tạo action mới (bỏ service, dùng trực tiếp model)
     async createAction(req, res) {
         try {
             const { userId, deviceName, actions } = req.body;
@@ -105,7 +81,7 @@ class DeviceActionController {
                 return res.status(400).json({ message: "Missing required fields" });
             }
 
-            const newAction = await deviceActionService.createAction({
+            const newAction = await DeviceAction.create({
                 userId,
                 deviceName,
                 actions,
