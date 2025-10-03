@@ -21,6 +21,12 @@ function Home() {
   const [fanOn, setFanOn] = useState(false);
   const [acOn, setAcOn] = useState(false);
   const [lightOn, setLightOn] = useState(false);
+
+  // 👉 Loading riêng cho từng thiết bị
+  const [fanLoading, setFanLoading] = useState(false);
+  const [acLoading, setAcLoading] = useState(false);
+  const [lightLoading, setLightLoading] = useState(false);
+
   const [data, setData] = useState([]);
 
   // 👉 Lấy dữ liệu cảm biến từ API
@@ -36,8 +42,8 @@ function Home() {
         console.error("❌ Lỗi fetch device status:", err);
       }
     };
-    // gọi hàm lấy trạng thái thiết bị khi component được mount
     fetchDeviceStatus();
+
     const fetchData = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/sensors/latest");
@@ -45,48 +51,58 @@ function Home() {
 
         if (json && json.date) {
           setData((prev) => {
-            const updated = [...prev, {
-              time: new Date(json.date).toLocaleTimeString(),
-              temperature: json.temperature,
-              humidity: json.humidity,
-              light: json.light,
-            }];
+            const updated = [
+              ...prev,
+              {
+                time: new Date(json.date).toLocaleTimeString(),
+                temperature: json.temperature,
+                humidity: json.humidity,
+                light: json.light,
+              },
+            ];
             return updated.length > 5 ? updated.slice(-5) : updated;
           });
         }
-
       } catch (err) {
         console.error("❌ Lỗi fetch data:", err);
       }
     };
 
-    // gọi API mỗi 2 giây
     const interval = setInterval(fetchData, 2000);
     return () => clearInterval(interval);
   }, []);
 
   // 👉 Lấy dữ liệu mới nhất
-  const latestData = data.length > 0 ? data[data.length - 1] : {
-    temperature: "--",
-    humidity: "--",
-    light: "--",
-  };
+  const latestData =
+    data.length > 0
+      ? data[data.length - 1]
+      : {
+        temperature: "--",
+        humidity: "--",
+        light: "--",
+      };
 
-  // 👉 Gửi lệnh bật/tắt thiết bị
-  const toggleDevice = async (device, state) => {
+  // 👉 Hàm toggle chung, truyền setState và setLoading riêng cho từng device
+  const toggleDevice = async (device, state, setDeviceState, setLoading) => {
     try {
-      await fetch("http://localhost:5000/api/device_actions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: "68bae24e9954716dfead58f7", // user mặc định
-          deviceName: device,
-          actions: state ? "ON" : "OFF",
-        }),
-      });
+      setLoading(true);
+      setTimeout(async () => {
+        await fetch("http://localhost:5000/api/device_actions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: "68bae24e9954716dfead58f7",
+            deviceName: device,
+            actions: state ? "ON" : "OFF",
+          }),
+        });
+        setDeviceState(state);
+        setLoading(false);
+      }, 500);
       console.log(`💡 ${device} -> ${state ? "ON" : "OFF"}`);
     } catch (err) {
       console.error("❌ Lỗi gửi lệnh:", err);
+      setLoading(false);
     }
   };
 
@@ -97,15 +113,16 @@ function Home() {
         <div className="container">
           {/* Header hiển thị thông số */}
           <div className="content-header">
+            {/* Temperature */}
             <div
               className="content-temperature"
               style={{
                 backgroundColor:
                   latestData.temperature < 15
-                    ? "rgb(51,134,236)" // xanh dương
+                    ? "rgb(51,134,236)"
                     : latestData.temperature < 30
-                      ? "rgb(215, 145, 31)" // xanh lá
-                      : "rgb(237,53,53)", // đỏ
+                      ? "rgb(215, 145, 31)"
+                      : "rgb(237,53,53)",
               }}
             >
               <FaTemperatureLow size={50} />
@@ -115,15 +132,16 @@ function Home() {
               </span>
             </div>
 
+            {/* Humidity */}
             <div
               className="content-humidity"
               style={{
                 backgroundColor:
                   latestData.humidity < 40
-                    ? "orange" // cam
+                    ? "orange"
                     : latestData.humidity < 70
-                      ? "rgb(156,201,73)" // xanh lá
-                      : "rgb(51,134,236)", // xanh dương
+                      ? "rgb(156,201,73)"
+                      : "rgb(51,134,236)",
               }}
             >
               <WiHumidity size={50} />
@@ -133,15 +151,16 @@ function Home() {
               </span>
             </div>
 
+            {/* Light */}
             <div
               className="content-light"
               style={{
                 backgroundColor:
                   latestData.light < 100
-                    ? "gray" // xám
+                    ? "gray"
                     : latestData.light < 500
-                      ? "gold" // vàng nhạt
-                      : "rgb(255,215,0)", // vàng đậm
+                      ? "gold"
+                      : "rgb(255,215,0)",
               }}
             >
               <FaLightbulb size={50} />
@@ -152,17 +171,34 @@ function Home() {
             </div>
           </div>
 
-
           {/* Biểu đồ + điều khiển */}
           <div className="content-main container mt-2">
             <div className="row">
               {/* Biểu đồ */}
               <div className="col-9">
                 <ResponsiveContainer width="100%" height={470}>
-                  <LineChart data={data} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                    <Line type="monotone" dataKey="temperature" stroke="#ff7300" name="Temperature (°C)" />
-                    <Line type="monotone" dataKey="humidity" stroke="#387908" name="Humidity (%)" />
-                    <Line type="monotone" dataKey="light" stroke="#8884d8" name="Light (lx)" />
+                  <LineChart
+                    data={data}
+                    margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                  >
+                    <Line
+                      type="monotone"
+                      dataKey="temperature"
+                      stroke="#ff7300"
+                      name="Temperature (°C)"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="humidity"
+                      stroke="#387908"
+                      name="Humidity (%)"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="light"
+                      stroke="#8884d8"
+                      name="Light (lx)"
+                    />
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="time" />
                     <YAxis />
@@ -182,13 +218,18 @@ function Home() {
                     <input
                       type="checkbox"
                       checked={fanOn}
-                      onChange={() => {
-                        setFanOn(!fanOn);
-                        toggleDevice("quat", !fanOn);
-                      }}
+                      disabled={fanLoading}
+                      onChange={() =>
+                        toggleDevice("quat", !fanOn, setFanOn, setFanLoading)
+                      }
                     />
                     <span className="slider round"></span>
                   </label>
+                  {fanLoading && (
+                    <div className="spinner-border spinner-border-sm text-primary ms-2" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Điều hòa */}
@@ -201,13 +242,18 @@ function Home() {
                     <input
                       type="checkbox"
                       checked={acOn}
-                      onChange={() => {
-                        setAcOn(!acOn);
-                        toggleDevice("dieuhoa", !acOn);
-                      }}
+                      disabled={acLoading}
+                      onChange={() =>
+                        toggleDevice("dieuhoa", !acOn, setAcOn, setAcLoading)
+                      }
                     />
                     <span className="slider round"></span>
                   </label>
+                  {acLoading && (
+                    <div className="spinner-border spinner-border-sm text-info ms-2" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Đèn */}
@@ -218,15 +264,21 @@ function Home() {
                     <input
                       type="checkbox"
                       checked={lightOn}
-                      onChange={() => {
-                        setLightOn(!lightOn);
-                        toggleDevice("den", !lightOn);
-                      }}
+                      disabled={lightLoading}
+                      onChange={() =>
+                        toggleDevice("den", !lightOn, setLightOn, setLightLoading)
+                      }
                     />
                     <span className="slider round"></span>
                   </label>
+                  {lightLoading && (
+                    <div className="spinner-border spinner-border-sm text-warning ms-2" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  )}
                 </div>
               </div>
+
             </div>
           </div>
         </div>

@@ -38,12 +38,12 @@ const MyProfile = () => {
                   <strong>Que Quan: {user.address}</strong>
                   <strong>
                     <Link to={user.linkGithub} target="_blank">
-                      <span>Link Github: {user.linkGithub}</span>
+                      <span>Link Github: Truy cập</span>
                     </Link>
                   </strong>
                   <strong>
                     <Link to={user.linkPDF} target="_blank">
-                      <span>Link PDF: {user.linkPDF}</span>
+                      <span>Link PDF: Truy cập</span>
                     </Link>
                   </strong>
                   <strong>
@@ -52,7 +52,7 @@ const MyProfile = () => {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <span>API : POSTMAN</span>
+                      <span>API POSTMAN: Truy cập</span>
                     </a>
                   </strong>
 

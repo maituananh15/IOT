@@ -89,7 +89,7 @@ class DeviceActionController {
                 actions,
                 date: new Date()
             });
-
+            
             // publish tới ESP32
             mqttClient.publish(`esp32/${deviceName}`, actions === "ON" ? "ON" : "OFF");
 
