@@ -2,7 +2,7 @@
 const mqtt = require("mqtt");
 
 // Thông tin kết nối MQTT broker
-const host = "192.168.231.228";
+const host = "192.168.1.9";
 const port = "1883";
 const username = "admin123";
 const password = "12345678Az";

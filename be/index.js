@@ -7,7 +7,7 @@ const deviceActionRoutes = require('./src/routers/deviceActionRouter');
 const DataSensor = require("./src/models/dataSensorModel");
 const DeviceAction = require("./src/models/deviceActionModel");
 const mqtt = require('mqtt');
-const mqttClient = require('./src/config/db/mqttClient'); 
+const mqttClient = require('./src/config/db/mqttClient');
 
 
 // ================== APP ==================
@@ -53,7 +53,7 @@ mqttClient.on("message", async (topic, message) => {
   if (topic === "esp32/datasensor") {
     const regex = /Temperature:\s([\d.]+).*Humidity:\s([\d.]+).*Light:\s(\d+)/;
     const match = msg.match(regex);
-    
+
     // Nếu đúng định dạng thì lưu
     if (match) {
       const temperature = parseFloat(match[1]);
@@ -95,7 +95,21 @@ mqttClient.on("message", async (topic, message) => {
 });
 
 
-// API lấy trạng thái thiết bị
+// API lấy và điều khiển thiết bị
 app.get("/api/devices/status", (req, res) => {
+  const { device, action } = req.query;
+
+  if (device && action) {
+    if (currentStatus.hasOwnProperty(device)) {
+      if (action === "ON" || action === "OFF") {
+        currentStatus[device] = action;
+
+        // Gửi lệnh về ESP32 qua MQTT
+        mqttClient.publish(`esp32/${device}`, action);
+        console.log(`🚀 Gửi MQTT: esp32/${device} -> ${action}`);
+      }
+    }
+  }
+
   res.json(currentStatus);
 });
