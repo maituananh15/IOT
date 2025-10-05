@@ -22,28 +22,45 @@ function Home() {
   const [acOn, setAcOn] = useState(false);
   const [lightOn, setLightOn] = useState(false);
 
-  // 👉 Loading riêng cho từng thiết bị
   const [fanLoading, setFanLoading] = useState(false);
   const [acLoading, setAcLoading] = useState(false);
   const [lightLoading, setLightLoading] = useState(false);
 
   const [data, setData] = useState([]);
+  const [esp32Status, setEsp32Status] = useState("DISCONNECTED");
 
-  // 👉 Lấy dữ liệu cảm biến từ API
+  // 👉 Theo dõi trạng thái kết nối ESP32
   useEffect(() => {
-    const fetchDeviceStatus = async () => {
+    const checkESP32Status = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/devices/status");
         const json = await res.json();
+
+        // Nếu trạng thái ESP32 thay đổi từ DISCONNECTED → CONNECTED
+        if (esp32Status === "DISCONNECTED" && json.esp32Status === "CONNECTED") {
+          // Reset tất cả thiết bị về OFF khi vừa cắm lại
+          setFanOn(false);
+          setAcOn(false);
+          setLightOn(false);
+          console.log("🔄 ESP32 reconnected — all devices reset to OFF");
+        }
+
         setFanOn(json.quat === "ON");
         setAcOn(json.dieuhoa === "ON");
         setLightOn(json.den === "ON");
+        setEsp32Status(json.esp32Status);
       } catch (err) {
         console.error("❌ Lỗi fetch device status:", err);
       }
     };
-    fetchDeviceStatus();
 
+    checkESP32Status();
+    const interval = setInterval(checkESP32Status, 5000);
+    return () => clearInterval(interval);
+  }, [esp32Status]);
+
+  // 👉 Lấy dữ liệu cảm biến định kỳ
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/sensors/latest");
@@ -68,11 +85,10 @@ function Home() {
       }
     };
 
-    const interval = setInterval(fetchData, 2000);
+    const interval = setInterval(fetchData, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // 👉 Lấy dữ liệu mới nhất
   const latestData =
     data.length > 0
       ? data[data.length - 1]
@@ -82,34 +98,72 @@ function Home() {
         light: "--",
       };
 
-  // 👉 Hàm toggle chung, truyền setState và setLoading riêng cho từng device
-  const toggleDevice = async (device, state, setDeviceState, setLoading) => {
+  // 👉 Hàm fetch có timeout
+  const fetchWithTimeout = (url, options, timeout = 3000) => {
+    return Promise.race([
+      fetch(url, options),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("⏰ Timeout")), timeout)
+      ),
+    ]);
+  };
+
+  // 👉 Hàm điều khiển thiết bị
+  const toggleDevice = async (device, desiredState, setDeviceState, setLoading) => {
+    setLoading(true);
+
+    if (esp32Status === "DISCONNECTED") {
+      setTimeout(() => {
+        setDeviceState(false);
+        setLoading(false);
+        alert(`⚠️ Thiết bị ${device} không phản hồi — ESP32 mất kết nối!`);
+      }, 10000);
+      return;
+    }
+
     try {
-      setLoading(true);
-      setTimeout(async () => {
-        await fetch("http://localhost:5000/api/device_actions", {
+      const res = await fetchWithTimeout(
+        "http://localhost:5000/api/device_actions",
+        {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId: "68bae24e9954716dfead58f7",
             deviceName: device,
-            actions: state ? "ON" : "OFF",
+            actions: desiredState ? "ON" : "OFF",
           }),
-        });
-        setDeviceState(state);
-        setLoading(false);
-      }, 500);
-      console.log(`💡 ${device} -> ${state ? "ON" : "OFF"}`);
+        },
+        9000
+      );
+
+      if (!res.ok) throw new Error("API lỗi");
+
+      // ✅ Nếu API OK → bật/tắt thành công
+      setDeviceState(desiredState);
+      console.log(`💡 ${device} -> ${desiredState ? "ON" : "OFF"}`);
     } catch (err) {
-      console.error("❌ Lỗi gửi lệnh:", err);
+      console.error("❌ Lỗi gửi lệnh:", err.message);
+      setDeviceState(false);
+      setEsp32Status("DISCONNECTED");
+      alert(`⚠️ Thiết bị ${device} không phản hồi — ESP32 mất kết nối!`);
+    } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <>
       <Layout />
       <div className="content">
+        <div className="esp32-status text-center mb-3">
+          {esp32Status === "CONNECTED" ? (
+            <span className="badge bg-success">🟢 ESP32 Connected</span>
+          ) : (
+            <span className="badge bg-danger">🔴 ESP32 Disconnected</span>
+          )}
+        </div>
+
         <div className="container">
           {/* Header hiển thị thông số */}
           <div className="content-header">
@@ -121,8 +175,8 @@ function Home() {
                   latestData.temperature < 15
                     ? "rgb(51,134,236)"
                     : latestData.temperature < 30
-                      ? "rgb(215, 145, 31)"
-                      : "rgb(237,53,53)",
+                      ? "rgb(233, 121, 24)"
+                      : "rgb(230, 34, 34)",
               }}
             >
               <FaTemperatureLow size={50} />
@@ -159,7 +213,7 @@ function Home() {
                   latestData.light < 100
                     ? "gray"
                     : latestData.light < 500
-                      ? "gold"
+                      ? "#89e31a"
                       : "rgb(255,215,0)",
               }}
             >
@@ -226,7 +280,10 @@ function Home() {
                     <span className="slider round"></span>
                   </label>
                   {fanLoading && (
-                    <div className="spinner-border spinner-border-sm text-primary ms-2" role="status">
+                    <div
+                      className="spinner-border spinner-border-sm text-primary ms-2"
+                      role="status"
+                    >
                       <span className="visually-hidden">Loading...</span>
                     </div>
                   )}
@@ -235,7 +292,11 @@ function Home() {
                 {/* Điều hòa */}
                 <div className="control-air mb-3">
                   <span className="me-2">
-                    {acOn ? <TbAirConditioning size={55} /> : <TbAirConditioningDisabled size={55} />}
+                    {acOn ? (
+                      <TbAirConditioning size={55} />
+                    ) : (
+                      <TbAirConditioningDisabled size={55} />
+                    )}
                   </span>
                   <span>Điều hòa</span>
                   <label className="switch">
@@ -250,7 +311,10 @@ function Home() {
                     <span className="slider round"></span>
                   </label>
                   {acLoading && (
-                    <div className="spinner-border spinner-border-sm text-info ms-2" role="status">
+                    <div
+                      className="spinner-border spinner-border-sm text-info ms-2"
+                      role="status"
+                    >
                       <span className="visually-hidden">Loading...</span>
                     </div>
                   )}
@@ -258,7 +322,9 @@ function Home() {
 
                 {/* Đèn */}
                 <div className="control-light mb-3">
-                  <FaLightbulb className={`icon ${lightOn ? "led-on" : ""}`} />
+                  <FaLightbulb
+                    className={`icon ${lightOn ? "led-on" : ""}`}
+                  />
                   <span>Đèn</span>
                   <label className="switch">
                     <input
@@ -272,13 +338,15 @@ function Home() {
                     <span className="slider round"></span>
                   </label>
                   {lightLoading && (
-                    <div className="spinner-border spinner-border-sm text-warning ms-2" role="status">
+                    <div
+                      className="spinner-border spinner-border-sm text-warning ms-2"
+                      role="status"
+                    >
                       <span className="visually-hidden">Loading...</span>
                     </div>
                   )}
                 </div>
               </div>
-
             </div>
           </div>
         </div>

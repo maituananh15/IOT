@@ -154,7 +154,7 @@
   right: 0;
   bottom: 0;
   background-color: #ccc; 
-  transition: 0.4s;
+   transition: background-color 0.1s ease-in-out;
   border-radius: 28px;
 }
 
@@ -169,6 +169,7 @@
   background-color: white;
   transition: 0.4s;
   border-radius: 50%;
+   transition: transform 0.1s ease-in-out;
 }
 
 

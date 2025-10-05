@@ -16,7 +16,9 @@
     "express": "^5.1.0",
     "moment": "^2.30.1",
     "mongoose": "^8.18.0",
-    "mqtt": "^5.14.1"
+    "mqtt": "^5.14.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

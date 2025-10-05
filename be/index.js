@@ -31,18 +31,36 @@ app.use('/api/device_actions', deviceActionRoutes);
 
 // ================== MQTT ==================
 // Trạng thái hiện tại của các thiết bị
+
 let currentStatus = {
   dieuhoa: "OFF",
   quat: "OFF",
   den: "OFF"
 };
 
+// Trạng thái ESP32
+let esp32Status = "DISCONNECTED";
+
 // Lắng nghe tin nhắn từ MQTT broker
 mqttClient.on("message", async (topic, message) => {
   const msg = message.toString();
   console.log(`📥 [${topic}] ${msg}`);
 
-  // ESP32 gửi trạng thái
+  // ⚙️ Kiểm tra trạng thái ESP32
+  if (topic === "esp32/status") {
+    esp32Status = msg === "CONNECTED" ? "CONNECTED" : "DISCONNECTED";
+    console.log("📡 ESP32 status:", esp32Status);
+
+    // 🔁 Nếu ESP32 vừa reconnect thì reset toàn bộ thiết bị
+    if (esp32Status === "CONNECTED") {
+      Object.keys(currentStatus).forEach((key) => {
+        currentStatus[key] = "OFF";
+      });
+      console.log("🔄 ESP32 reconnected — reset all devices to OFF");
+    }
+  }
+
+  // ESP32 gửi trạng thái thiết bị
   if (topic === "esp32/dieuhoa") currentStatus.dieuhoa = msg;
   if (topic === "esp32/quat") currentStatus.quat = msg;
   if (topic === "esp32/den") currentStatus.den = msg;
@@ -54,7 +72,6 @@ mqttClient.on("message", async (topic, message) => {
     const regex = /Temperature:\s([\d.]+).*Humidity:\s([\d.]+).*Light:\s(\d+)/;
     const match = msg.match(regex);
 
-    // Nếu đúng định dạng thì lưu
     if (match) {
       const temperature = parseFloat(match[1]);
       const humidity = parseFloat(match[2]);
@@ -88,14 +105,11 @@ mqttClient.on("message", async (topic, message) => {
       });
       await action.save();
       console.log(`💡 Lưu lịch sử: ${device} -> ${msg}`);
-    } else {
-      console.log(`⚠️ Bỏ qua vì ${device} vẫn giữ trạng thái ${msg}`);
-    }
+    } 
   }
 });
 
-
-// API lấy và điều khiển thiết bị
+// ================== API điều khiển & trạng thái ==================
 app.get("/api/devices/status", (req, res) => {
   const { device, action } = req.query;
 
@@ -103,13 +117,14 @@ app.get("/api/devices/status", (req, res) => {
     if (currentStatus.hasOwnProperty(device)) {
       if (action === "ON" || action === "OFF") {
         currentStatus[device] = action;
-
-        // Gửi lệnh về ESP32 qua MQTT
         mqttClient.publish(`esp32/${device}`, action);
         console.log(`🚀 Gửi MQTT: esp32/${device} -> ${action}`);
       }
     }
   }
 
-  res.json(currentStatus);
+  res.json({
+    ...currentStatus,
+    esp32Status, 
+  });
 });

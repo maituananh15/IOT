@@ -63,35 +63,18 @@ const DataSensor = () => {
       <div className='container-fluid'>
 
         {/* Controls */}
-        <div className='container-body d-flex gap-3 my-3'>
-
-          {/* Filter */}
+        <div className='container-body d-flex container gap-3 my-3'>
+                    {/* Filter */}
           <div className="dropdown">
-            <button className="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+            <button className="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
               Loại
             </button>
             <ul className="dropdown-menu">
               <li><button className="dropdown-item" onClick={() => setFilterType("temperature")}>Nhiệt độ</button></li>
               <li><button className="dropdown-item" onClick={() => setFilterType("humidity")}>Độ ẩm</button></li>
               <li><button className="dropdown-item" onClick={() => setFilterType("light")}>Ánh sáng</button></li>
+              <li><button className="dropdown-item" onClick={() => setFilterType("date")}>Thời gian</button></li>
               <li><button className="dropdown-item" onClick={() => setFilterType("")}>Tất cả</button></li>
-            </ul>
-          </div>
-
-          {/* Sort */}
-          <div className='dropdown'>
-            <button className="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-              Sắp xếp
-            </button>
-            <ul className="dropdown-menu">
-              <li><button className="dropdown-item" onClick={() => { setSortField("temperature"); setSortOrder("asc"); }}>Nhiệt độ ↑</button></li>
-              <li><button className="dropdown-item" onClick={() => { setSortField("temperature"); setSortOrder("desc"); }}>Nhiệt độ ↓</button></li>
-              <li><button className="dropdown-item" onClick={() => { setSortField("humidity"); setSortOrder("asc"); }}>Độ ẩm ↑</button></li>
-              <li><button className="dropdown-item" onClick={() => { setSortField("humidity"); setSortOrder("desc"); }}>Độ ẩm ↓</button></li>
-              <li><button className="dropdown-item" onClick={() => { setSortField("light"); setSortOrder("asc"); }}>Ánh sáng ↑</button></li>
-              <li><button className="dropdown-item" onClick={() => { setSortField("light"); setSortOrder("desc"); }}>Ánh sáng ↓</button></li>
-              <li><button className="dropdown-item" onClick={() => { setSortField("date"); setSortOrder("desc"); }}>Mới nhất</button></li>
-              <li><button className="dropdown-item" onClick={() => { setSortField("date"); setSortOrder("asc"); }}>Cũ nhất</button></li>
             </ul>
           </div>
 
@@ -109,10 +92,24 @@ const DataSensor = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <button className="btn btn-primary" type="submit">Tìm</button>
           </form>
 
-
+                    {/* Sort */}
+          <div className='dropdown ms-auto'>
+            <button className="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
+              Sắp xếp
+            </button>
+            <ul className="dropdown-menu">
+              <li><button className="dropdown-item" onClick={() => { setSortField("temperature"); setSortOrder("asc"); }}>Nhiệt độ ↑</button></li>
+              <li><button className="dropdown-item" onClick={() => { setSortField("temperature"); setSortOrder("desc"); }}>Nhiệt độ ↓</button></li>
+              <li><button className="dropdown-item" onClick={() => { setSortField("humidity"); setSortOrder("asc"); }}>Độ ẩm ↑</button></li>
+              <li><button className="dropdown-item" onClick={() => { setSortField("humidity"); setSortOrder("desc"); }}>Độ ẩm ↓</button></li>
+              <li><button className="dropdown-item" onClick={() => { setSortField("light"); setSortOrder("asc"); }}>Ánh sáng ↑</button></li>
+              <li><button className="dropdown-item" onClick={() => { setSortField("light"); setSortOrder("desc"); }}>Ánh sáng ↓</button></li>
+              <li><button className="dropdown-item" onClick={() => { setSortField("date"); setSortOrder("desc"); }}>Mới nhất</button></li>
+              <li><button className="dropdown-item" onClick={() => { setSortField("date"); setSortOrder("asc"); }}>Cũ nhất</button></li>
+            </ul>
+          </div>
         </div>
 
         {/* Table */}
@@ -121,14 +118,9 @@ const DataSensor = () => {
             <thead className="table-dark">
               <tr>
                 <th>Stt</th>
-                {filterType === "" && <>
-                  <th>Nhiệt độ</th>
-                  <th>Độ ẩm</th>
-                  <th>Ánh sáng</th>
-                </>}
-                {filterType === "temperature" && <th>Nhiệt độ</th>}
-                {filterType === "humidity" && <th>Độ ẩm</th>}
-                {filterType === "light" && <th>Ánh sáng</th>}
+                <th>Nhiệt độ (°C)</th>
+                <th>Độ ẩm (%)</th>
+                <th>Ánh sáng (lux)</th>
                 <th>Thời gian</th>
               </tr>
             </thead>
@@ -136,48 +128,45 @@ const DataSensor = () => {
               {data.map((item, idx) => (
                 <tr key={item._id}>
                   <td>{(currentPage - 1) * itemsPerPage + idx + 1}</td>
-                  {filterType === "" && <>
-                    <td>{item.temperature} °C</td>
-                    <td>{item.humidity} %</td>
-                    <td>{item.light} lux</td>
-                  </>}
-                  {filterType === "temperature" && <td>{item.temperature} °C</td>}
-                  {filterType === "humidity" && <td>{item.humidity} %</td>}
-                  {filterType === "light" && <td>{item.light} lux</td>}
+                  <td>{item.temperature} °C</td>
+                  <td>{item.humidity} %</td>
+                  <td>{item.light} lux</td>
                   <td>{dayjs(item.date).format("YYYY-MM-DD HH:mm:ss")}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          
-          {/* Items per page */}
-          <div className='dropdown'>
-            <button className="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown">
-              Hiển thị: {itemsPerPage}
-            </button>
-            <ul className="dropdown-menu">
-              {[10, 20, 30].map(num => (
-                <li key={num}><button className="dropdown-item" onClick={() => { setItemsPerPage(num); setCurrentPage(1); }}>{num}</button></li>
-              ))}
-            </ul>
-          </div>
-          {/* Pagination */}
-          <div className="my-5 d-flex justify-content-center">
-            <ul className="pagination mb-0">
-              <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                <button className="page-link" onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}>Trước</button>
-              </li>
 
-              {getPageNumbers().map((page, i) => (
-                <li key={i} className={`page-item ${page === currentPage ? "active" : ""} ${page === "..." ? "disabled" : ""}`}>
-                  <button className="page-link" onClick={() => page !== "..." && setCurrentPage(page)}>{page}</button>
+          <div className="d-flex mt-3">
+            {/* Items per page */}
+            <div className='dropdown'>
+              <button className="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown">
+                Hiển thị: {itemsPerPage}
+              </button>
+              <ul className="dropdown-menu">
+                {[10, 20, 30].map(num => (
+                  <li key={num}><button className="dropdown-item" onClick={() => { setItemsPerPage(num); setCurrentPage(1); }}>{num}</button></li>
+                ))}
+              </ul>
+            </div>
+            {/* Pagination */}
+            <div className="d-flex justify-content-center ms-auto">
+              <ul className="pagination mb-0">
+                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                  <button className="page-link" onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}>Trước</button>
                 </li>
-              ))}
 
-              <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                <button className="page-link" onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}>Sau</button>
-              </li>
-            </ul>
+                {getPageNumbers().map((page, i) => (
+                  <li key={i} className={`page-item ${page === currentPage ? "active" : ""} ${page === "..." ? "disabled" : ""}`}>
+                    <button className="page-link" onClick={() => page !== "..." && setCurrentPage(page)}>{page}</button>
+                  </li>
+                ))}
+
+                <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                  <button className="page-link" onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}>Sau</button>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

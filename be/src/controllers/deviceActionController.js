@@ -1,5 +1,4 @@
 
-
 const DeviceAction = require('../models/deviceActionModel');
 const mqttClient = require('../config/db/mqttClient');
 
@@ -23,35 +22,56 @@ class DeviceActionController {
             if (filterAction) filter.actions = filterAction;
 
             if (search) {
-                if (/^\d{2}:\d{2}:\d{2}$/.test(search)) {
-                    let [hours, minutes, seconds] = search.split(":").map(Number);
-                    const utcHours = (hours - 7 + 24) % 24;
-                    filter.$expr = {
+                const date = new Date(search);
+                const isDate = !isNaN(date);
+
+                const toLocalHour = (h) => (h - 7 + 24) % 24;
+
+                const matchTime = (h, m, s) => ({
+                    $expr: {
                         $and: [
-                            { $eq: [{ $hour: "$date" }, utcHours] },
-                            { $eq: [{ $minute: "$date" }, minutes] },
-                            { $eq: [{ $second: "$date" }, seconds] },   
+                            { $eq: [{ $hour: "$date" }, toLocalHour(h)] },
+                            ...(m !== undefined ? [{ $eq: [{ $minute: "$date" }, m] }] : []),
+                            ...(s !== undefined ? [{ $eq: [{ $second: "$date" }, s] }] : []),
                         ],
-                    };
-                } else if (/^\d{2}:\d{2}$/.test(search)) {
-                    let [hours, minutes] = search.split(":").map(Number);
-                    const utcHours = (hours - 7 + 24) % 24;
-                    filter.$expr = {
-                        $and: [
-                            { $eq: [{ $hour: "$date" }, utcHours] },
-                            { $eq: [{ $minute: "$date" }, minutes] },
-                        ],
-                    };
-                } else if (/^\d{4}-\d{2}-\d{2}$/.test(search)) {
-                    const start = new Date(`${search}T00:00:00Z`);
-                    const end = new Date(`${search}T23:59:59Z`);
-                    filter.date = { $gte: start, $lte: end };
-                } else if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(search)) {
+                    },
+                });
+                if (/^\d{2}(:\d{2}){1,2}$/.test(search)) {
+                    // Tự động bắt HH:mm hoặc HH:mm:ss
+                    const [h, m, s] = search.split(":").map(Number);
+                    filter = matchTime(h, m, s);
+                }
+                else if (/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}(:\d{2})?)?$/.test(search)) {
+                    // YYYY-MM-DD hoặc YYYY-MM-DD HH:mm(:ss)
                     const date = new Date(search);
-                    filter.date = {
-                        $gte: date,
-                        $lt: new Date(date.getTime() + 1000),
-                    };
+                    const next = new Date(date);
+                    next.setSeconds(next.getSeconds() + 1);
+
+                    if (search.length === 10) {
+                        // chỉ có ngày
+                        filter = {
+                            date: {
+                                $gte: new Date(`${search}T00:00:00`),
+                                $lte: new Date(`${search}T23:59:59`),
+                            },
+                        };
+                    }
+                    else if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(search)) {
+                        const [datePart, timePart] = search.split(" ");
+                        const [h, m] = timePart.split(":").map(Number);
+
+                        const start = new Date(`${datePart}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
+                        const end = new Date(start);
+                        end.setMinutes(end.getMinutes() + 1);
+
+                        filter = { date: { $gte: start, $lt: end } };
+                    }
+
+                    else {
+                        // có thêm giờ
+                        filter = { date: { $gte: date, $lt: next } };
+                    }
+
                 }
             }
 
@@ -75,30 +95,51 @@ class DeviceActionController {
         }
     }
 
-    // ✅ Tạo action mới (bỏ service, dùng trực tiếp model)
+    // ✅ createAction có cơ chế đợi ESP32 phản hồi
     async createAction(req, res) {
         try {
+            
             const { userId, deviceName, actions } = req.body;
             if (!userId || !deviceName || !actions) {
                 return res.status(400).json({ message: "Missing required fields" });
             }
 
-            const newAction = await DeviceAction.create({
-                userId,
-                deviceName,
-                actions,
-                date: new Date()
-            });
-            
-            // publish tới ESP32
-            mqttClient.publish(`esp32/${deviceName}`, actions === "ON" ? "ON" : "OFF");
+            // Gửi lệnh xuống ESP32 qua MQTT
+            mqttClient.publish(`esp32/${deviceName}`, actions);
 
-            res.status(201).json(newAction);
+            // Flag kiểm tra đã phản hồi chưa
+            let responded = false;
+
+            // Timeout sau 8 giây
+            const timer = setTimeout(() => {
+                if (!responded) {
+                    return res.status(504).json({ message: "⚠️ Device not responding" });
+                }
+            }, 8000);
+
+            // Đợi phản hồi từ ESP32
+            mqttClient.once("message", async (topic, message) => {
+                if (topic === `esp32/${deviceName}`) {
+                    responded = true;
+                    clearTimeout(timer);
+
+                    // Lưu action
+                    const newAction = await DeviceAction.create({
+                        userId,
+                        deviceName,
+                        actions,
+                        date: new Date()
+                    });
+
+                    return res.status(201).json(newAction);
+                }
+            });
         } catch (error) {
             console.error("❌ Lỗi createAction:", error);
             res.status(500).json({ message: error.message });
         }
     }
+
 }
 
 module.exports = new DeviceActionController();

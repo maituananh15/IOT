@@ -60,7 +60,7 @@ const DeviceActivity = () => {
         <div className='container-body d-flex gap-3 my-3'>
           {/* Filter Device */}
           <div className="dropdown">
-            <button className="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+            <button className="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
               Thiết bị
             </button>
             <ul className="dropdown-menu">
@@ -73,7 +73,7 @@ const DeviceActivity = () => {
 
           {/* Filter Action */}
           <div className="dropdown">
-            <button className="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+            <button className="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown">
               Hành động
             </button>
             <ul className="dropdown-menu">
@@ -100,7 +100,6 @@ const DeviceActivity = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <button className="btn btn-primary" type="submit">Tìm</button>
           </form>
         </div>
 
@@ -129,53 +128,56 @@ const DeviceActivity = () => {
             </tbody>
           </table>
 
-          {/* Items per page */}
-          <div className='dropdown'>
-            <button className="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown">
-              Hiển thị: {itemsPerPage}
-            </button>
-            <ul className="dropdown-menu">
-              {[10, 20, 30].map(num => (
-                <li key={num}>
-                  <button
-                    className="dropdown-item"
-                    onClick={() => {
-                      setItemsPerPage(num);
-                      setCurrentPage(1);
-                    }}
-                  >
-                    {num}
+          <div className="d-flex mt-3">
+            {/* Items per page */}
+            <div className='dropdown'>
+              <button className="btn btn-outline-info dropdown-toggle" data-bs-toggle="dropdown">
+                Hiển thị: {itemsPerPage}
+              </button>
+              <ul className="dropdown-menu">
+                {[10, 20, 30].map(num => (
+                  <li key={num}>
+                    <button
+                      className="dropdown-item"
+                      onClick={() => {
+                        setItemsPerPage(num);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      {num}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Pagination */}
+            <div className=" d-flex justify-content-center ms-auto">
+              <ul className="pagination mb-0">
+                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                  <button className="page-link" onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}>
+                    Trước
                   </button>
                 </li>
-              ))}
-            </ul>
+                {getPageNumbers().map((page, i) => (
+                  <li
+                    key={i}
+                    className={`page-item ${page === currentPage ? "active" : ""} ${page === "..." ? "disabled" : ""}`}
+                  >
+                    <button className="page-link" onClick={() => page !== "..." && setCurrentPage(page)}>
+                      {page}
+                    </button>
+                  </li>
+                ))}
+                <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                  <button className="page-link" onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}>
+                    Sau
+                  </button>
+                </li>
+              </ul>
+            </div>
           </div>
 
-          {/* Pagination */}
-          <div className="my-5 d-flex justify-content-center">
-            <ul className="pagination mb-0">
-              <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-                <button className="page-link" onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}>
-                  Trước
-                </button>
-              </li>
-              {getPageNumbers().map((page, i) => (
-                <li
-                  key={i}
-                  className={`page-item ${page === currentPage ? "active" : ""} ${page === "..." ? "disabled" : ""}`}
-                >
-                  <button className="page-link" onClick={() => page !== "..." && setCurrentPage(page)}>
-                    {page}
-                  </button>
-                </li>
-              ))}
-              <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-                <button className="page-link" onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}>
-                  Sau
-                </button>
-              </li>
-            </ul>
-          </div>
         </div>
       </div>
     </>
